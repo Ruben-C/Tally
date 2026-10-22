@@ -1,0 +1,53 @@
+/* Dashboard, Cash Flow, Accounts — page layout only; everything visual comes from the kit (app.css). */
+
+/* Budget summary panel: four figures in a 2×2 grid above the meter. */
+.dash-budget { display: flex; flex-direction: column; gap: 10px; flex: none; }
+.dash-budget .figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 0; }
+.dash-budget .figures dt { font-size: 12px; color: var(--text-3); }
+.dash-budget .figures dd { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
+.dash-budget-line { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+
+/* Tablets: the budget panel is full width, so its figures sit in one row. */
+@media (min-width: 761px) and (max-width: 1180px) { .dash-budget .figures { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* One-line hint above a table (e.g. an unusually large charge). */
+.dash-hint {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0 14px;
+  border: 0; border-bottom: 1px solid var(--border); background: var(--yellow-soft); color: var(--text-2);
+  font-size: 12.5px; text-align: left;
+}
+.dash-hint:hover { color: var(--text); }
+.dash-hint svg { width: 14px; height: 14px; color: var(--yellow); flex: none; }
+.dash-hint b { color: var(--text); font-weight: 600; }
+
+/* "Budget is below its bills" line under Upcoming: a plain row that opens Budgets. */
+button.dash-warn { border: 0; background: none; padding: 0; text-align: left; color: var(--text-2); }
+button.dash-warn:hover { color: var(--text); }
+
+/* Section title with controls on the right (Cash Flow month breakdown). */
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 var(--gap); }
+.section-head h2 { font-size: 14px; font-weight: 600; }
+
+/* Stacked share-of-spending bar above the category table. */
+.share-strip { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+
+/* First-run panel. */
+.welcome { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 36px 16px; }
+.welcome .icon { width: 36px; height: 36px; border-radius: var(--r); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); margin-bottom: 4px; }
+.welcome .icon svg { width: 18px; height: 18px; }
+.welcome h2 { font-size: 16px; }
+.welcome p { max-width: 460px; font-size: 13px; }
+
+/* A chart that fills whatever height its grid row gives the panel. */
+.chart-body { display: flex; flex-direction: column; min-height: 220px; }
+.chart-body > .chart-box.fill { min-height: 200px; }
+
+/* Meter in a table cell: fixed width so the bar is readable next to a wide column. */
+.meter-cell { width: 150px; }
+@media (max-width: 1280px) { .meter-cell { width: 110px; } }
+
+/* Panel heads with several controls wrap them onto a second line on phones instead of overflowing. */
+@media (max-width: 760px) {
+  .wrap-head > .panel-head { flex-wrap: wrap; }
+  .wrap-head > .panel-head .actions { margin-left: 0; width: 100%; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+}

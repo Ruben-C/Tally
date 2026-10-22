@@ -1,0 +1,86 @@
+/* Budgets, Recurring, Goals, Funding — layout-only rules on top of the kit (components/ui.tsx). Tokens only. */
+
+/* ---- budgets --------------------------------------------------------------- */
+
+/* Budget figure edited in place: looks like plain text until hovered or focused. */
+.budget-input { width: 104px; margin-left: auto; }
+.dt tr:hover .budget-sum { padding-right: 7px; }
+.budget-rail { max-height: calc(100dvh - var(--header) - 2 * var(--gap)); overflow: clip; }
+.budget-rail > .panel-body { overflow-y: auto; scrollbar-width: thin; }
+.budget-detail-stats { border-bottom: 1px solid var(--border); margin: -14px -14px 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sheet .budget-detail-stats { margin: -16px -16px 0; }
+.rail .dt th, .sheet .dt th { position: static; }
+.stat-grid.budget-detail-stats > .stat:last-child { grid-column: auto; } /* beats the phone rule that widens an odd last tile */
+/* Small bordered table inside a rail or sheet. Its description wraps instead of hiding its detail. */
+.mini-table { border: 1px solid var(--border); border-radius: var(--r); overflow: clip; background: var(--surface); }
+.mini-table .dt th { background: var(--surface); }
+.mini-table .dt td.wide { white-space: normal; }
+.mini-table .dt td.wide .ellipsis { white-space: normal; overflow-wrap: anywhere; }
+.mini-table .dt td.wide .cell { align-items: flex-start; }
+.g-stats { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+
+/* ---- recurring ------------------------------------------------------------- */
+
+.dt tr.late td:first-child { box-shadow: inset 2px 0 0 var(--yellow); }
+.rec-cal .dow { padding: 4px 0; font-size: 11px; font-weight: 500; color: var(--text-3); text-align: center; background: var(--surface); }
+.rec-cal .cal-day {
+  min-height: 52px; padding: 4px 5px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  border: 0; background: var(--surface); text-align: left; font-size: 11px; color: var(--text-3); cursor: default;
+}
+.rec-cal .cal-day.blank { background: var(--surface); }
+.rec-cal .cal-day.past { color: var(--text-3); opacity: .55; }
+.rec-cal .cal-day.has { cursor: pointer; color: var(--text-2); }
+.rec-cal .cal-day.has:hover { background: var(--surface-2); }
+.rec-cal .cal-day.today { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--text); opacity: 1; }
+.rec-cal .cal-day .d { font-variant-numeric: tabular-nums; line-height: 1.2; }
+.rec-cal .cal-day .sw-row { display: flex; gap: 2px; }
+.rec-cal .cal-day .sw-row i { width: 6px; height: 6px; border-radius: 1.5px; background: var(--c); }
+.rec-cal .cal-day .amt { margin-top: auto; font-size: 10.5px; font-weight: 600; color: var(--text); }
+.rec-cal .cal-day .amt.pos { color: var(--green); }
+.rec-cal .cal-day:disabled { opacity: 1; }
+.rec-cal .cal-day.past:disabled { opacity: .55; }
+
+/* ---- goals ----------------------------------------------------------------- */
+
+.dt tr.done .primary::after { content: ' ✓'; color: var(--green); }
+.g-templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px; }
+.g-templates .picker-option { border-color: var(--border); }
+.g-sources { display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; padding: 4px; border: 1px solid var(--border); border-radius: var(--r-sm); }
+.g-icons { display: flex; flex-direction: column; gap: 8px; }
+.g-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--r-sm); background: var(--surface-2); }
+.legend-swatch { display: inline-block; width: 3px; height: 14px; border-radius: 1px; flex: none; }
+
+/* Funding editor: one row per account — label · mode · value input · result · remove. */
+.fund-list { border: 1px solid var(--border); border-radius: var(--r); overflow: clip; }
+.fund-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 112px 80px auto; gap: 8px; align-items: center;
+  padding: 6px 6px 6px 12px; border-top: 1px solid var(--border-soft);
+}
+.fund-row:first-child { border-top: 0; }
+.fund-row.over { box-shadow: inset 2px 0 0 var(--red); }
+.fund-acct { min-width: 0; line-height: 1.3; }
+.fund-value { text-align: right; font-weight: 600; white-space: nowrap; }
+.fund-note { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: -2px; }
+.fund-note svg { vertical-align: -2px; }
+
+/* Allocation overview (Goals rail). */
+.alloc-list { display: flex; flex-direction: column; gap: 14px; }
+.alloc-acct + .alloc-acct { padding-top: 12px; border-top: 1px solid var(--border-soft); }
+
+@media (max-width: 760px) {
+  .fund-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .fund-row > .segmented { grid-column: 1; grid-row: 2; justify-self: start; }
+  .fund-row > .fund-input { grid-column: 2 / 4; grid-row: 2; width: 120px; justify-self: end; }
+  .fund-row > .fund-value { grid-column: 2; grid-row: 1; }
+  .fund-row > .icon-btn { grid-column: 3; grid-row: 1; }
+  .budget-detail-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sheet .budget-detail-stats { margin: -14px -14px 0; } /* phone sheet-body padding */
+}
+.budget-figure { display: inline-block; min-width: 72px; height: 26px; padding: 0 7px; border: 1px solid transparent; border-radius: var(--r-sm); background: none; text-align: right; color: var(--text-2); }
+.dt tr:hover .budget-figure { border-color: var(--border); background: var(--bg); color: var(--text); }
+.budget-figure:focus-visible { border-color: var(--accent); }
+
+/* ---- budget methods ------------------------------------------------------ */
+.select-wrap.budget-tag { width: 120px; }
+.bucket-sub { display: flex; flex-direction: column; gap: 4px; }
+.bucket-sub .meter { width: 100%; }

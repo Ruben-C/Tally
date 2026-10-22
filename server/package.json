@@ -1,0 +1,17 @@
+{
+  "name": "tally-server",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test 'test/**/*.test.mjs'"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^14",
+    "express": "^5.2",
+    "pg": "^8.16",
+    "plaid": "^48"
+  }
+}
