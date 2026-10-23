@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { ACCOUNT_GROUPS, isLiability, money, pct, shortDate, timeAgo } from '../lib/format';
 import type { Account, NWPoint } from '../lib/types';
 import {
-  Badge, Button, ButtonLink, DataTable, Delta, Empty, IconButton, InlineEdit, Meter, Page, PageHeader, Panel, Segmented, Sheet, Skel, Sparkline, Stat, StatGrid, Switch,
+  Badge, Button, ButtonLink, DataTable, DateInput, Delta, Empty, Field, IconButton, InlineEdit, Meter, MoneyInput, Page, PageHeader, Panel, Segmented, Sheet, Skel, Sparkline, Stat, StatGrid, Switch,
   useToast, vars, type TableGroup,
 } from '../components/ui';
 import { NetWorthChart } from '../components/charts';
@@ -105,6 +105,49 @@ function AccountGoals({ accountId, onClose }: { accountId: number; onClose: () =
   );
 }
 
+// Manual starting point for history Tally can't rebuild: an investment linked long after it was opened, or money
+// moved in by transfers that don't name the account. Before the date, net worth counts it at this balance.
+function StartingPoint({ a }: { a: Account }) {
+  const toast = useToast();
+  const [date, setDate] = useState(a.start_date || '');
+  const [bal, setBal] = useState(String(a.start_balance ?? 0));
+  const save = useMutate((body: { start_date: string | null; start_balance?: number }) => api(`/accounts/${a.id}`, { method: 'PATCH', body }));
+  const late = !!date && !!a.tracked_since && date > a.tracked_since;
+  const dirty = date !== (a.start_date || '') || (!!date && Number(bal || 0) !== (a.start_balance ?? 0));
+  const fail = (e: Error) => toast(e.message, { kind: 'error' });
+  return (
+    <>
+      <div className="section-label">Balance history</div>
+      <p className="faint small" style={{ margin: '0 0 8px' }}>
+        {a.tracked_since ? `The bank's balances start ${shortDate(a.tracked_since)}. ` : ''}
+        {a.type === 'investment'
+          ? 'Earlier history comes from transfers that name this account. If net worth looks off before then, set what it held before a date.'
+          : 'Earlier history is rebuilt from transactions. Set a starting point if it looks wrong.'}
+      </p>
+      <div className="form-grid">
+        <Field label="Before" error={late ? `Must be on or before ${shortDate(a.tracked_since!)}` : undefined}>
+          <DateInput value={date} onChange={setDate} max={a.tracked_since || undefined} clearable relative={false} invalid={late} aria-label="Starting point date" />
+        </Field>
+        <Field label="The balance was">
+          <MoneyInput value={bal} onChange={setBal} disabled={!date} aria-label="Starting balance" />
+        </Field>
+      </div>
+      <div className="row" style={{ marginTop: 8, gap: 8 }}>
+        <Button size="sm" variant="primary" disabled={!dirty || late || save.isPending}
+          onClick={() => save.mutateAsync(date ? { start_date: date, start_balance: Number(bal || 0) } : { start_date: null }).then(() => toast(date ? 'Starting point saved' : 'Starting point cleared')).catch(fail)}>
+          Save
+        </Button>
+        {a.start_date && (
+          <Button size="sm" variant="ghost" disabled={save.isPending}
+            onClick={() => save.mutateAsync({ start_date: null }).then(() => { setDate(''); setBal('0'); toast('Starting point cleared'); }).catch(fail)}>
+            Clear
+          </Button>
+        )}
+      </div>
+    </>
+  );
+}
+
 function AccountSheet({ a, onClose }: { a: Account; onClose: () => void }) {
   const toast = useToast();
   const update = useMutate((body: { display_name?: string; hidden?: boolean }) => api(`/accounts/${a.id}`, { method: 'PATCH', body }));
@@ -160,6 +203,7 @@ function AccountSheet({ a, onClose }: { a: Account; onClose: () => void }) {
           <Switch on={a.hidden} label="Hide account" onChange={(v) => update.mutateAsync({ hidden: v }).then(() => toast(v ? 'Account hidden' : 'Account visible'))} />
         </label>
       </div>
+      {!a.is_demo && <StartingPoint a={a} />}
     </Sheet>
   );
 }

@@ -13,6 +13,10 @@ export interface Account {
   current_balance: number | null; available_balance: number | null; credit_limit: number | null; currency: string;
   hidden: boolean; is_demo: boolean; item_status: string | null; item_error: string | null; last_synced_at: string | null;
   institution_color: string | null; institution_logo: string | null; balance_30d: number | null; spark: number[] | null; updated_at: string;
+  /** Manual starting point: before start_date the account counts at start_balance. */
+  start_date: string | null; start_balance: number | null;
+  /** First balance the bank reported; earlier history is rebuilt from transactions (or transfers, for investments). */
+  tracked_since: string | null;
 }
 export interface Txn {
   id: number; account_id: number; date: string; amount: number; label: string; name: string; merchant_name: string | null;

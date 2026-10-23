@@ -202,7 +202,9 @@ async function doSync(itemId) {
       await t.q(`update plaid_items set cursor=$2, status='ok', error_code=null, error_message=null, last_synced_at=now() where id=$1`, [item.id, cursor]);
     });
 
-    for (const id of Object.values(acctIds)) await rebuildDerived(id);
+    // Investment history comes from transfers in other accounts, which may sit under another bank.
+    const investments = (await q(`select id from accounts where type = 'investment'`)).map((r) => r.id);
+    for (const id of new Set([...Object.values(acctIds), ...investments])) await rebuildDerived(id);
     if (inserted.length) await applyGoalSplits({ txnIds: inserted }); // rules that split new transfers across goals
     await refreshRecurring();
     return { added: added.length, modified: modified.length, removed: removed.length };

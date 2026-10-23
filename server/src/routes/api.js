@@ -10,7 +10,7 @@ import { refreshRecurring, createSeries, settle } from '../recurring.js';
 import { UNITS, effectiveMode, isLong, monthPlan, myAmount, occurrences, perMonth } from '../schedule.js';
 import { ruleMatches } from '../categorize.js';
 import { setSplits } from '../splits.js';
-import { iso, addDays } from '../balances.js';
+import { iso, addDays, rebuildDerived } from '../balances.js';
 import { goals, applyGoalSplits, plannedSaving } from '../goals.js';
 
 export const api = Router();
@@ -163,8 +163,8 @@ api.get('/dashboard', wrap(async (req) => {
 
 // ---- accounts & net worth ---------------------------------------------------
 
-// Before an account's first known balance it counts at that balance, not $0. Investment accounts have no reconstructed
-// history (market moves aren't transactions), so a newly linked one would otherwise look like a jump in net worth.
+// Before an account's earliest balance row it counts at that balance, not $0, so a newly linked investment account doesn't
+// look like a jump in net worth. Its history only goes back as far as transfers that name it (or its manual starting point).
 async function netWorthSeries(from) {
   return q(
     `with days as (select d::date as date from generate_series($1::date, current_date, interval '1 day') d)
@@ -188,7 +188,8 @@ api.get('/accounts', wrap(async () => {
     `select a.*, coalesce(a.display_name, a.name) as label, i.status as item_status, i.error_code as item_error, i.last_synced_at,
             i.institution_color, i.institution_logo,
             (select balance from balance_history h where h.account_id = a.id and h.date <= current_date - 30 order by date desc limit 1) as balance_30d,
-            (select array_agg(balance order by date) from balance_history h where h.account_id = a.id and h.date > current_date - 90) as spark
+            (select array_agg(balance order by date) from balance_history h where h.account_id = a.id and h.date > current_date - 90) as spark,
+            (select min(date) from balance_history h where h.account_id = a.id and not h.derived) as tracked_since
        from accounts a left join plaid_items i on i.id = a.item_id
       order by case a.type when 'depository' then 1 when 'credit' then 2 when 'investment' then 3 when 'loan' then 4 else 5 end, a.current_balance desc nulls last`,
   );
@@ -196,12 +197,25 @@ api.get('/accounts', wrap(async () => {
 
 api.patch('/accounts/:id', wrap(async (req) => {
   const { display_name, hidden } = req.body;
+  // Starting point: { start_date, start_balance } sets it, start_date null clears it.
+  const setStart = req.body.start_date !== undefined;
+  const startDate = req.body.start_date || null;
+  const startBalance = startDate ? Number(req.body.start_balance ?? 0) : null;
+  if (setStart && startDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !Number.isFinite(startBalance)) throw bad('start_date and start_balance must be a date and a number');
+    const real = await one('select min(date) as d from balance_history where account_id = $1 and not derived', [req.params.id]);
+    if (real?.d && startDate > real.d) throw bad(`The starting point must be on or before ${real.d}, the first balance from the bank`);
+  }
   const row = await one(
     `update accounts set display_name = case when $2::bool then nullif(trim($3::text), '') else display_name end,
-       hidden = coalesce($4::bool, hidden), updated_at = now() where id = $1 returning *`,
-    [req.params.id, display_name !== undefined, display_name ?? null, hidden ?? null],
+       hidden = coalesce($4::bool, hidden),
+       start_date = case when $5::bool then $6::date else start_date end,
+       start_balance = case when $5::bool then $7::numeric else start_balance end,
+       updated_at = now() where id = $1 returning *`,
+    [req.params.id, display_name !== undefined, display_name ?? null, hidden ?? null, setStart, startDate, startBalance],
   );
   if (!row) throw bad('not found', 404);
+  if (setStart) await rebuildDerived(row.id);
   return row;
 }));
 
