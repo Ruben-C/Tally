@@ -118,8 +118,8 @@ export interface Rule {
   id: number; field: 'merchant' | 'name'; op: 'contains' | 'equals' | 'starts_with'; pattern: string; amount_min: number | null; amount_max: number | null;
   set_category_id: number | null; set_display_name: string | null; mark_reviewed: boolean; category_name: string | null; emoji: string | null;
   color?: string | null; matches?: number;
-  account_id: number | null; direction: 'any' | 'in' | 'out'; goal_splits: { goal_id: number; amount: number }[];
-  account_label?: string | null; allocations_made?: number; typical_amount?: number | null; last_match?: string | null;
+  account_id: number | null; direction: 'any' | 'in' | 'out'; goal_splits: { goal_id: number; amount: number }[]; goal_account_id: number | null;
+  account_label?: string | null; goal_account_label?: string | null; allocations_made?: number; typical_amount?: number | null; last_match?: string | null;
 }
 export interface PlaidItem {
   id: number; institution_name: string | null; institution_color: string | null; institution_logo: string | null; status: string;

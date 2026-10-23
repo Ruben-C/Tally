@@ -341,7 +341,8 @@ export async function allocate(t, { goalId, accountId, amount, date = null, note
   return row || { skipped: 'duplicate' };
 }
 
-// Rules with goal splits: allocate matching money to goals, from the account it landed in. Idempotent per
+// Rules with goal splits: allocate matching money to goals, in the rule's goal account if it has one (money that is
+// moved on automatically), otherwise in the account it landed in. Idempotent per
 // (transaction, goal). `txnIds` limits to specific (e.g. newly synced) transactions; `since` to a date range.
 export async function applyGoalSplits({ txnIds = null, ruleId = null, since = null } = {}) {
   const { ruleMatches } = await import('./categorize.js');
@@ -360,7 +361,7 @@ export async function applyGoalSplits({ txnIds = null, ruleId = null, since = nu
           const goal = await t.one('select id, archived from goals where id = $1', [sp.goal_id]);
           if (!goal || goal.archived) continue;
           const out = await allocate(t, {
-            goalId: goal.id, accountId: x.account_id, amount: sp.amount, date: x.date,
+            goalId: goal.id, accountId: r.goal_account_id || x.account_id, amount: sp.amount, date: x.date,
             note: `From ${x.display_name || x.merchant_name || x.name}`, transactionId: x.id, ruleId: r.id,
           });
           if (out?.id) n++;

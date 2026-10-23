@@ -875,6 +875,7 @@ const RULE_TX = 'select id, account_id, date, name, merchant_name, display_name,
 api.get('/rules', wrap(async () => {
   const rules = await q(
     `select r.*, c.name as category_name, c.emoji, c.color, coalesce(a.display_name, a.name) as account_label,
+            (select coalesce(ga.display_name, ga.name) from accounts ga where ga.id = r.goal_account_id) as goal_account_label,
             (select count(*) from goal_allocations x where x.rule_id = r.id)::int as allocations_made
        from rules r left join categories c on c.id = r.set_category_id left join accounts a on a.id = r.account_id order by r.id desc`,
   );
@@ -903,11 +904,13 @@ function cleanSplits(list) {
 api.patch('/rules/:id', wrap(async (req) => {
   const { field, op, pattern, amount_min, amount_max, set_category_id, set_display_name, mark_reviewed, account_id, direction } = req.body;
   if (direction !== undefined && !['any', 'in', 'out'].includes(direction)) throw bad('bad direction');
-  if (account_id !== undefined || direction !== undefined || req.body.goal_splits !== undefined)
+  const { goal_account_id } = req.body;
+  if (account_id !== undefined || direction !== undefined || req.body.goal_splits !== undefined || goal_account_id !== undefined)
     await q(
       `update rules set account_id = case when $2::bool then $3::int else account_id end, direction = coalesce($4, direction),
-         goal_splits = coalesce($5::jsonb, goal_splits) where id = $1`,
-      [req.params.id, account_id !== undefined, account_id || null, direction ?? null, req.body.goal_splits !== undefined ? JSON.stringify(cleanSplits(req.body.goal_splits)) : null],
+         goal_splits = coalesce($5::jsonb, goal_splits), goal_account_id = case when $6::bool then $7::int else goal_account_id end where id = $1`,
+      [req.params.id, account_id !== undefined, account_id || null, direction ?? null, req.body.goal_splits !== undefined ? JSON.stringify(cleanSplits(req.body.goal_splits)) : null,
+       goal_account_id !== undefined, goal_account_id || null],
     );
   const row = await one(
     `update rules set field = coalesce($2, field), op = coalesce($3, op), pattern = coalesce(trim($4), pattern),
@@ -927,15 +930,15 @@ api.patch('/rules/:id', wrap(async (req) => {
 }));
 
 api.post('/rules', wrap(async (req) => {
-  const { field = 'merchant', op = 'contains', pattern = '', amount_min = null, amount_max = null, set_category_id = null, set_display_name = null, mark_reviewed = false, account_id = null, direction = 'any' } = req.body;
+  const { field = 'merchant', op = 'contains', pattern = '', amount_min = null, amount_max = null, set_category_id = null, set_display_name = null, mark_reviewed = false, account_id = null, direction = 'any', goal_account_id = null } = req.body;
   const splits = cleanSplits(req.body.goal_splits);
   if (!String(pattern).trim() && !account_id && direction === 'any') throw bad('a rule needs a merchant pattern, an account, or a direction');
   if (!['any', 'in', 'out'].includes(direction)) throw bad('bad direction');
   if (!set_category_id && !set_display_name?.trim() && !mark_reviewed && !splits.length) throw bad('a rule needs something to do');
   return one(
-    `insert into rules (field, op, pattern, amount_min, amount_max, set_category_id, set_display_name, mark_reviewed, account_id, direction, goal_splits)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
-    [field, op, String(pattern).trim(), amount_min, amount_max, set_category_id, set_display_name?.trim() || null, !!mark_reviewed, account_id || null, direction, JSON.stringify(splits)],
+    `insert into rules (field, op, pattern, amount_min, amount_max, set_category_id, set_display_name, mark_reviewed, account_id, direction, goal_splits, goal_account_id)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`,
+    [field, op, String(pattern).trim(), amount_min, amount_max, set_category_id, set_display_name?.trim() || null, !!mark_reviewed, account_id || null, direction, JSON.stringify(splits), goal_account_id || null],
   );
 }));
 

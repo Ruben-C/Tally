@@ -58,6 +58,7 @@ export function RuleEditor({ rule, onClose }: { rule?: Rule; onClose: () => void
   const [account, setAccount] = useState<number | ''>(rule?.account_id ?? '');
   const [direction, setDirection] = useState<Rule['direction']>(rule?.direction || 'any');
   const [splits, setSplits] = useState<{ goal_id: number | ''; amount: string }[]>(rule?.goal_splits.map((x) => ({ goal_id: x.goal_id, amount: String(x.amount) })) || []);
+  const [holdIn, setHoldIn] = useState<number | ''>(rule?.goal_account_id ?? '');
   const [backfill, setBackfill] = useState(false);
   const [since, setSince] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().slice(0, 10); });
 
@@ -65,6 +66,7 @@ export function RuleEditor({ rule, onClose }: { rule?: Rule; onClose: () => void
   const goodSplits = splits.filter((x) => x.goal_id && Number(x.amount) > 0).map((x) => ({ goal_id: Number(x.goal_id), amount: Number(x.amount) }));
   const splitTotal = goodSplits.reduce((a, x) => a + x.amount, 0);
   const acctLabel = accounts.data?.find((a) => a.id === account)?.label;
+  const holdLabel = accounts.data?.find((a) => a.id === holdIn)?.label;
   const dc = useDebounced(cond);
   const preview = useQuery({
     queryKey: ['rule-preview', dc],
@@ -76,7 +78,7 @@ export function RuleEditor({ rule, onClose }: { rule?: Rule; onClose: () => void
   const rangeOk = !(amounts && min && max && Number(min) > Number(max));
   const valid = hasCondition && rangeOk && (cat != null || !!rename.trim() || review || goodSplits.length > 0);
   const save = useMutate(async () => {
-    const body = { ...cond, set_category_id: cat, set_display_name: rename.trim() || null, mark_reviewed: review, goal_splits: goodSplits };
+    const body = { ...cond, set_category_id: cat, set_display_name: rename.trim() || null, mark_reviewed: review, goal_splits: goodSplits, goal_account_id: goodSplits.length ? holdIn || null : null };
     const r = rule ? await api<Rule>(`/rules/${rule.id}`, { method: 'PATCH', body: { ...body, set_display_name: rename } }) : await api<Rule>('/rules', { body });
     const doSplits = goodSplits.length > 0 && backfill;
     return applyNow || doSplits
@@ -166,7 +168,7 @@ export function RuleEditor({ rule, onClose }: { rule?: Rule; onClose: () => void
 
           <h3>Split deposits into goals</h3>
           <p className="field-hint" style={{ marginTop: -6 }}>
-            Set aside part of each matching deposit, from the account it lands in. E.g. a $2,900 transfer to savings → $2,500 Down payment, $200 Travel.
+            Set aside part of each matching deposit. E.g. a $2,900 transfer to savings → $2,500 Down payment, $200 Travel.
           </p>
           {splits.map((sp, i) => (
             <div key={i} className="split-row">
@@ -199,6 +201,12 @@ export function RuleEditor({ rule, onClose }: { rule?: Rule; onClose: () => void
           {goodSplits.length > 0 && !account && <p className="warn small">Pick the account the money lands in (e.g. savings) so only those deposits are split.</p>}
           {goodSplits.length > 0 && (
             <div className="form-grid">
+              <Field label="Held in" full hint="If an automatic transfer moves this money on (e.g. checking → brokerage), pick where it ends up so the goals count that account.">
+                <Select value={holdIn} onChange={(e) => setHoldIn(e.target.value ? Number(e.target.value) : '')}>
+                  <option value="">The account it lands in</option>
+                  {accounts.data?.filter((a) => ['depository', 'investment', 'other'].includes(a.type)).map((a) => <option key={a.id} value={a.id}>{a.label}{a.mask ? ` ··${a.mask}` : ''}</option>)}
+                </Select>
+              </Field>
               <label className="check-row full">
                 <Switch on={backfill} label="Backfill" onChange={setBackfill} />
                 <span>Also split deposits I've already received<span className="field-hint">Otherwise only new ones. Never counts the same deposit twice.</span></span>
@@ -224,7 +232,7 @@ export function RuleEditor({ rule, onClose }: { rule?: Rule; onClose: () => void
           <Panel title="Preview" meta={hasCondition && preview.data ? `${preview.data.count} match${preview.data.count === 1 ? '' : 'es'}` : undefined} flush>
             <div className="panel-body rule-sentence" style={{ borderBottom: '1px solid var(--border)' }}>
               <RuleSentence r={cond} account={acctLabel} />
-              {goodSplits.length ? <>, set aside <b>{money(splitTotal, { cents: false })}</b> across {goodSplits.length} goal{goodSplits.length > 1 ? 's' : ''}</> : null}
+              {goodSplits.length ? <>, set aside <b>{money(splitTotal, { cents: false })}</b>{holdLabel ? <> in <b className="rule-token">{holdLabel}</b></> : null} across {goodSplits.length} goal{goodSplits.length > 1 ? 's' : ''}</> : null}
               {c || rename.trim() || review ? (
                 <>
                   , {[
@@ -357,6 +365,7 @@ export default function Rules() {
                     const g = goalsQ.data?.goals.find((x) => x.id === sp.goal_id);
                     return <Badge key={sp.goal_id} tone="accent" title={g?.name || 'Deleted goal'}>{g?.emoji} {g?.name || 'Deleted goal'} <span className="num">{money(sp.amount, { cents: false })}</span></Badge>;
                   })}
+                  {r.goal_splits.length > 0 && r.goal_account_label && <span className="faint small">held in {r.goal_account_label}</span>}
                 </div>
               ),
             },
